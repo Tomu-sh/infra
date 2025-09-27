@@ -34,12 +34,15 @@ model_list:
       headers:
         HTTP-Referer: https://api.tomu.sh
         X-Title: tomu-api
+  
+  - model_name: gemini-2.5-flash-image
+    litellm_params:
+      model: openrouter/google/gemini-2.5-flash-image-preview
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+      headers:
+        HTTP-Referer: https://api.tomu.sh
+        X-Title: tomu-api
 
 general_settings:
   master_key: os.environ/OPENROUTER_API_KEY
-  
-litellm_settings:
-  success_callback: ["langfuse"]
-  failure_callback: ["langfuse"]
-  set_verbose: true
-
