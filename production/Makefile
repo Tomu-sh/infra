@@ -1,4 +1,4 @@
-.PHONY: deploy update-docker logs status clean test-ssh help
+.PHONY: deploy update-docker update-nginx logs status clean test-ssh help
 
 # Deploy to production server using Docker Compose + Ansible
 deploy:
@@ -10,7 +10,7 @@ update-docker:
 	@if [ ! -f .env ]; then echo "❌ Please create .env file first (copy from env.example)"; exit 1; fi
 	@echo "🔄 Updating Docker services on production server..."
 	@echo "⏰ Started at: $$(date)"
-	ssh -o IdentityAgent=none -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519 ubuntu@81.15.150.170 "\
+	ssh -o IdentityAgent=none -o IdentitiesOnly=yes -i  "\
 		cd /opt/litellm-production && \
 		echo '🛑 Stopping existing services...' && \
 		sudo docker compose down || true && \
@@ -26,6 +26,21 @@ update-docker:
 		echo '✅ Update complete!'"
 	@echo "🎉 Docker services updated successfully!"
 	@echo "📋 Check status with: make status"
+
+# Update nginx configuration only
+update-nginx:
+	@echo "🔄 Updating nginx configuration..."
+	@echo "📁 Copying nginx config to server..."
+	scp -o IdentityAgent=none -o IdentitiesOnly=yes -i nginx/conf.d/api.tomu.sh.conf :/tmp/api.tomu.sh.conf
+	ssh -o IdentityAgent=none -o IdentitiesOnly=yes -i  "\
+		cd /opt/litellm-production && \
+		echo '📝 Installing new nginx config...' && \
+		sudo cp /tmp/api.tomu.sh.conf nginx/conf.d/api.tomu.sh.conf && \
+		echo '🔄 Restarting nginx container...' && \
+		sudo docker compose restart nginx && \
+		echo '📊 Checking nginx status...' && \
+		sudo docker compose logs nginx --tail 10"
+	@echo "✅ Nginx configuration updated!"
 
 # View deployment logs
 logs:
@@ -56,6 +71,7 @@ help:
 	@echo "Commands:"
 	@echo "  deploy        - Deploy to production server (full deployment)"
 	@echo "  update-docker - Update Docker services on production server"
+	@echo "  update-nginx  - Update nginx configuration only"
 	@echo "  logs          - View deployment logs"
 	@echo "  status        - Check production server status"
 	@echo "  clean         - Clean up local deployment containers"

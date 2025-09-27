@@ -1,165 +1,98 @@
 # Production LiteLLM with Nginx & SSL
 
-Simple production setup for LiteLLM API with:
-- Nginx reverse proxy with `/litellm` path prefix
-- SSL/TLS using Let's Encrypt
-- CORS enabled for localhost debugging
-- Docker Compose + Ansible deployment automation
+Simple production setup for LiteLLM API with Nginx proxy and SSL certificates.
 
-## Quick Deployment with Docker + Ansible
+## Quick Setup
 
-No need to install Ansible locally - everything runs in containers!
+1. Configure your server in `inventory`
+2. Set your OpenRouter API key in `.env`
+3. Deploy: `make deploy`
 
-### 1. Configure your server
-Edit the `inventory` file:
-```ini
-[production]
-api-server ansible_host=YOUR_SERVER_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/your-key.pem
-```
+## API Commands(For Frontend)
 
-### 2. Set up your environment
+### Test if service is running:
 ```bash
-# Copy environment template
-cp env.example .env
-
-# Edit .env and add your OpenRouter API key
-vim .env
-# Set: OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
+curl https://api.tomu.sh/health
 ```
 
-### 3. Deploy to your server
+### List available models:
 ```bash
-make deploy
+curl https://api.tomu.sh/litellm/v1/models \
+  -H "Authorization: Bearer sk-or-v1-YOUR_OPENROUTER_KEY"
 ```
 
-That's it! The Docker container will run Ansible and:
-- Install Docker and required packages on your server
-- Copy all configuration files
-- Get SSL certificates from Let's Encrypt
-- Start all services
-- Test the deployment
-
-## Alternative: Run deployment in background
-```bash
-make deploy-detached  # Run in background
-make deploy-logs      # View deployment logs
-make deploy-stop      # Stop deployment container
-```
-
-## Manual Setup (Alternative)
-
-If you prefer to set up manually on the server:
-
-```bash
-# Copy files to your server
-scp -r production/* user@your-server:/opt/litellm-production/
-
-# SSH to your server and run
-ssh user@your-server
-cd /opt/litellm-production
-make setup
-```
-
-## API Usage
-
-Your API will be available at `https://api.tomu.sh/litellm/`
-
-### Example requests:
-
-**Chat completion:**
+### Send a chat request:
 ```bash
 curl -X POST https://api.tomu.sh/litellm/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-or-v1-your-api-key" \
+  -H "Authorization: Bearer sk-or-v1-YOUR_OPENROUTER_KEY" \
   -d '{
     "model": "gpt-3.5-turbo",
-    "messages": [{"role": "user", "content": "Hello!"}],
+    "messages": [{"role": "user", "content": "Hello! Please respond with just your name."}],
     "max_tokens": 50
   }'
 ```
 
-**List models:**
+### Test with Claude:
 ```bash
-curl https://api.tomu.sh/litellm/v1/models \
-  -H "Authorization: Bearer sk-or-v1-your-api-key"
+curl -X POST https://api.tomu.sh/litellm/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-or-v1-YOUR_OPENROUTER_KEY" \
+  -d '{
+    "model": "claude-3-haiku",
+    "messages": [{"role": "user", "content": "What is 2+2?"}],
+    "max_tokens": 50
+  }'
 ```
 
-**Health check:**
+### Test with Llama:
 ```bash
-curl https://api.tomu.sh/health
+curl -X POST https://api.tomu.sh/litellm/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-or-v1-YOUR_OPENROUTER_KEY" \
+  -d '{
+    "model": "llama-3.1-8b",
+    "messages": [{"role": "user", "content": "Write a haiku about coding"}],
+    "max_tokens": 100
+  }'
 ```
+
+## Available Models
+- `gpt-3.5-turbo` - OpenAI GPT-3.5 Turbo
+- `gpt-4` - OpenAI GPT-4  
+- `claude-3-haiku` - Anthropic Claude 3 Haiku
+- `llama-3.1-8b` - Meta Llama 3.1 8B
 
 ## Management Commands
 
 ```bash
-make deploy           # Deploy to production server
-
+make deploy        # Full deployment
+make update-docker # Update services
+make update-nginx  # Update nginx config
+make status        # Check server status
+make test-ssh      # Test SSH connection
 ```
 
-## CORS Support
+## CORS Enabled
 
-CORS is enabled for all origins (`*`), so you can test from localhost:
-
+You can call the API from localhost/browser:
 ```javascript
-// From your frontend running on localhost
 fetch('https://api.tomu.sh/litellm/v1/models', {
   headers: {
-    'Authorization': 'Bearer sk-or-v1-your-api-key'
+    'Authorization': 'Bearer sk-or-v1-YOUR_OPENROUTER_KEY'
   }
 })
 ```
 
-## File Structure
-
-```
-production/
-├── docker-compose.global.yml         # Docker + Ansible deployment
-├── deploy.yml                        # Ansible playbook
-├── inventory                         # Server configuration
-├── ansible.cfg                       # Ansible settings
-├── docker-compose.yml                # Main services
-├── nginx/conf.d/api.tomu.sh.conf     # Nginx config
-├── setup-ssl.sh                      # SSL setup script
-├── Makefile                          # Management commands
-├── .env                              # Your API keys
-├── litellm-config.yaml               # LiteLLM configuration
-└── README.md                         # This file
-```
-
 ## Prerequisites
 
-- Docker and Docker Compose installed on your local machine
-- A server with Ubuntu 20.04+ and SSH access
-- Domain name (api.tomu.sh) pointing to your server
-- Ports 80 and 443 open on your server
-- SSH key access to your server
+- Ubuntu server with SSH access
+- Domain `api.tomu.sh` pointing to your server IP
+- OpenRouter API key
+- Ports 80/443 open
 
 ## Troubleshooting
 
-**Deployment fails:**
-- Check your inventory file has correct server details
-- Ensure SSH key works: `ssh -i ~/.ssh/your-key.pem user@server`
-- Make sure domain points to your server
-- View deployment logs: `make deploy-logs`
-
-**SSL certificate issues:**
-- Verify api.tomu.sh resolves to your server IP
-- Ensure ports 80 and 443 are open
-- Check DNS propagation: `dig api.tomu.sh`
-
-**API not responding:**
-- Check logs: `make logs`
-- Check containers: `docker ps`
-- Test health: `curl https://api.tomu.sh/health`
-
-## Useful Commands
-```bash
-# SSH to your server
-ssh -i ~/.ssh/id_ed25519 ubuntu@81.15.150.170
-
-# Check deployment status
-make deploy-logs
-
-# Test API once deployed
-curl https://api.tomu.sh/health
-```
+- **Health check fails**: `make status`
+- **Nginx issues**: `make update-nginx`
+- **Service issues**: `make update-docker`
