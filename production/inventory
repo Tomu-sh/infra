@@ -1,0 +1,7 @@
+[production]
+# Add your production server here
+# Example:
+api-server ansible_host=81.15.150.170 ansible_user=ubuntu ansible_ssh_private_key_file=/root/.ssh/id_ed25519 ansible_ssh_common_args='-o IdentityAgent=none -o IdentitiesOnly=yes -o ConnectTimeout=30'
+
+[production:vars]
+ansible_python_interpreter=/usr/bin/python3

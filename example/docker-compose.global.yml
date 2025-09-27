@@ -1,7 +1,7 @@
 services:
   # VM that will host the LightLLM service
   lightllm-vm:
-    build: ./example
+    build: .
     container_name: lightllm-vm
     privileged: true
     ports:
@@ -25,8 +25,8 @@ services:
       lightllm-vm:
         condition: service_healthy
     volumes:
-      - ./implementation:/ansible
-      - ./ssh_key:/ansible/ssh_key:ro
+      - ../implementation:/ansible
+      - ../ssh_key:/ansible/ssh_key:ro
     working_dir: /ansible
     networks:
       - demo-network
@@ -46,3 +46,4 @@ services:
 networks:
   demo-network:
     driver: bridge
+

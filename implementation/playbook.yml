@@ -151,3 +151,45 @@
     - name: Print LiteLLM logs
       debug:
         var: litellm_logs.stdout_lines
+
+    - name: Detect docker compose command
+      shell: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker compose"
+        elif docker-compose --version >/dev/null 2>&1; then
+          echo "docker-compose"
+        else
+          echo "missing"
+        fi
+      register: compose_cmd_out
+      changed_when: false
+
+    - name: Fail if docker compose is missing
+      fail:
+        msg: "Docker Compose not installed on target host"
+      when: compose_cmd_out.stdout == 'missing'
+
+    - name: Fallback pull images using detected compose command
+      shell: "{{ compose_cmd_out.stdout }} -f /opt/lightllm/docker-compose.yml pull --quiet"
+      args:
+        chdir: /opt/lightllm
+      register: fallback_pull
+      changed_when: false
+
+    - name: Fallback start services using detected compose command
+      shell: "{{ compose_cmd_out.stdout }} -f /opt/lightllm/docker-compose.yml up -d --remove-orphans"
+      args:
+        chdir: /opt/lightllm
+      register: fallback_up
+      changed_when: false
+
+    - name: Fallback compose ps
+      shell: "{{ compose_cmd_out.stdout }} -f /opt/lightllm/docker-compose.yml ps"
+      args:
+        chdir: /opt/lightllm
+      register: fallback_ps
+      changed_when: false
+
+    - name: Print fallback compose ps
+      debug:
+        var: fallback_ps.stdout_lines
