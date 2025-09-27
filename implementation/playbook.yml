@@ -91,7 +91,63 @@
         state: absent
       ignore_errors: true
 
-    - name: Start docker-compose services
+    - name: Pull latest images (docker compose pull)
+      command: docker compose pull --quiet
+      args:
+        chdir: /opt/lightllm
+      become: true
+      become_user: "{{ ansible_user }}"
+
+    - name: Start services (docker compose up -d)
+      command: docker compose up -d --remove-orphans
+      args:
+        chdir: /opt/lightllm
+      become: true
+      become_user: "{{ ansible_user }}"
+
+    - name: Ensure services are pulled and recreated (idempotent)
       community.docker.docker_compose_v2:
         project_src: /opt/lightllm
+        pull: true
+        remove_orphans: true
+        recreate: always
         state: present
+
+    - name: Show docker compose status
+      command: docker compose -f /opt/lightllm/docker-compose.yml ps
+      register: compose_ps
+      changed_when: false
+
+    - name: Print docker compose status
+      debug:
+        var: compose_ps.stdout_lines
+
+    - name: Wait for LiteLLM health endpoint
+      uri:
+        url: http://localhost:8080/health
+        method: GET
+        return_content: false
+        status_code: 200
+        validate_certs: false
+      register: healthcheck
+      retries: 30
+      delay: 2
+      until: healthcheck.status == 200
+      failed_when: false
+
+    - name: Ensure litellm container is running
+      command: docker ps --filter name=litellm --filter status=running --format {{'"'}}{{'{{'}}.Names{{'}}'}}{{'"'}}
+      register: litellm_ps
+      retries: 10
+      delay: 2
+      until: litellm_ps.stdout is search('litellm')
+      changed_when: false
+
+    - name: Show recent LiteLLM logs
+      command: docker compose -f /opt/lightllm/docker-compose.yml logs --no-color --tail 120
+      register: litellm_logs
+      changed_when: false
+
+    - name: Print LiteLLM logs
+      debug:
+        var: litellm_logs.stdout_lines
