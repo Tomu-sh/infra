@@ -1,23 +1,8 @@
 # LightLLM Infrastructure Demo
 
 This project demonstrates a complete infrastructure setup for deploying LightLLM using Docker, Ansible, and containerized VMs.
-
-## Structure
-
-```
-infra/
-├── implementation/          # Reusable Ansible implementation
-│   ├── ansible.cfg         # Ansible configuration
-│   ├── inventory           # Hosts inventory (vm + target_hosts groups)
-│   ├── playbook.yml        # Main deployment playbook
-│   └── docker-compose.yml  # LightLLM service definition
-├── example/                # Demo VM environment
-│   ├── Dockerfile          # VM container definition
-│   ├── docker-compose.yml  # VM setup
-│   ├── entrypoint.sh       # VM initialization script
-│   └── ssh_key*            # SSH keys for VM access
-└── docker-compose.global.yml # Complete demo orchestration
-```
+## Run only LiteLLM
+in the implementation folder, run docker compose up
 
 ## Quick Start
 
