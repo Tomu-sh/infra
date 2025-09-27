@@ -1,0 +1,48 @@
+services:
+  # VM that will host the LightLLM service
+  lightllm-vm:
+    build: ./example
+    container_name: lightllm-vm
+    privileged: true
+    ports:
+      - "2222:22" # SSH access to VM
+      - "8080:8080" # LightLLM service port
+    volumes: []
+    networks:
+      - demo-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "22"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+
+  # Ansible orchestrator that deploys to the VM
+  ansible-deploy:
+    image: willhallonline/ansible:latest
+    container_name: ansible-deploy
+    depends_on:
+      lightllm-vm:
+        condition: service_healthy
+    volumes:
+      - ./implementation:/ansible
+      - ./ssh_key:/ansible/ssh_key:ro
+    working_dir: /ansible
+    networks:
+      - demo-network
+    environment:
+      - ANSIBLE_HOST_KEY_CHECKING=False
+    command: >
+      sh -c "
+        echo '🔧 Preparing Ansible deployment...' &&
+        cp /ansible/ssh_key /tmp/ssh_key &&
+        chmod 600 /tmp/ssh_key &&
+        sed -i 's|ansible_ssh_private_key_file=../ssh_key|ansible_ssh_private_key_file=/tmp/ssh_key|' /ansible/inventory &&
+        echo '🚀 Starting LiteLLM deployment...' &&
+        sleep 3 &&
+        ansible-playbook -i inventory playbook.yml -v --limit vm
+      "
+
+networks:
+  demo-network:
+    driver: bridge

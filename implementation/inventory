@@ -1,0 +1,7 @@
+[vm]
+# VM example configuration
+lightllm-vm ansible_host=lightllm-vm ansible_port=22 ansible_user=ansible ansible_ssh_private_key_file=/tmp/ssh_key ansible_ssh_common_args="-o StrictHostKeyChecking=no"
+
+[target_hosts]
+# Add your target hosts here for real deployments
+# example: myserver ansible_host=192.168.1.100 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa

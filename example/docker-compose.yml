@@ -1,0 +1,32 @@
+services:
+  lightllm-vm:
+    build: .
+    container_name: lightllm-vm
+    privileged: true # Required for Docker-in-Docker
+    ports:
+      - "2222:22" # SSH access
+      - "8080:8080" # LightLLM port forwarding
+    volumes: []
+    networks:
+      - lightllm-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "ssh",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=5",
+          "ansible@localhost",
+          "echo",
+          "ready",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  lightllm-network:
+    driver: bridge

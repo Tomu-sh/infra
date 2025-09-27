@@ -1,0 +1,97 @@
+- hosts: all
+  become: true
+  tasks:
+    - name: Install docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Install docker-compose
+      apt:
+        name: docker-compose-v2
+        state: present
+
+    - name: Ensure docker is running
+      command: docker info
+      register: docker_info
+      ignore_errors: true
+      
+    - name: Start docker daemon if not running
+      shell: dockerd > /var/log/docker.log 2>&1 &
+      when: docker_info.rc != 0
+      become: true
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Reset ssh connection to allow user changes to affect ansible user
+      meta: reset_connection
+
+    - name: Create deployment directory
+      file:
+        path: /opt/lightllm
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy docker-compose.yml to remote
+      copy:
+        src: docker-compose.yml
+        dest: /opt/lightllm/docker-compose.yml
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    - name: Copy LiteLLM configuration to remote
+      copy:
+        src: litellm-config.yaml
+        dest: /opt/lightllm/litellm-config.yaml
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    - name: Check if .env file exists locally
+      local_action:
+        module: stat
+        path: "{{ playbook_dir }}/.env"
+      register: env_file_stat
+      become: false
+
+    - name: Copy .env file to remote if it exists
+      copy:
+        src: .env
+        dest: /opt/lightllm/.env
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+      when: env_file_stat.stat.exists
+
+    - name: Create .env from template if .env doesn't exist
+      copy:
+        src: env.example
+        dest: /opt/lightllm/.env
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+      when: not env_file_stat.stat.exists
+
+    - name: Warn about API key configuration
+      debug:
+        msg: "⚠️  Remember to update /opt/lightllm/.env with your actual OPENROUTER_API_KEY"
+      when: not env_file_stat.stat.exists
+
+    - name: Stop existing docker-compose services
+      community.docker.docker_compose_v2:
+        project_src: /opt/lightllm
+        state: absent
+      ignore_errors: true
+
+    - name: Start docker-compose services
+      community.docker.docker_compose_v2:
+        project_src: /opt/lightllm
+        state: present
