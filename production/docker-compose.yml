@@ -32,6 +32,17 @@ services:
     networks:
       - production-network
 
+  x402-facilitator:
+    image: ukstv/x402-facilitator
+    container_name: x402-facilitator
+    expose:
+      - "8080"
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - production-network
+
   certbot:
     image: certbot/certbot
     container_name: certbot
